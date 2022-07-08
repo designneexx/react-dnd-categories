@@ -1,85 +1,12 @@
 import logo from './logo.svg'
 import './App.css'
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd'
-import { forwardRef, memo, useEffect, useState } from 'react'
+import { forwardRef } from 'react'
 import produce from 'immer'
-
-const longHash = () => Math.random().toString(32).slice(2).repeat(2)
-
-const ContainerTypes = {
-  Available: 'AVAILABLE',
-  Current: 'CURRENT',
-}
-
-const initialItems = [
-  {
-    id: longHash(),
-    title: 'Доступные',
-    type: ContainerTypes.Available,
-    items: [],
-  },
-  {
-    id: longHash(),
-    title: 'Активные',
-    type: ContainerTypes.Current,
-    items: [],
-  },
-]
-
-const getItem = (title, category) => ({
-  id: longHash(),
-  type: category,
-  content: `Текст по сути ${title}`,
-})
-
-const CategoryTypes = {
-  Shares: 'SHARES',
-  Funds: 'FUNDS',
-  Bonds: 'BODS',
-  Money: 'Money',
-  Trash: 'TRASH',
-}
-
-const getCategories = () => [
-  {
-    id: longHash(),
-    type: CategoryTypes.Trash,
-    title: 'Корзина',
-    items: [],
-  },
-  {
-    id: longHash(),
-    type: CategoryTypes.Shares,
-    title: 'Акции',
-    items: Array.from({ length: 4 }, (_, index) =>
-      getItem('Акции', CategoryTypes.Shares)
-    ),
-  },
-  {
-    id: longHash(),
-    type: CategoryTypes.Funds,
-    title: 'Фонды',
-    items: Array.from({ length: 4 }, (_, index) =>
-      getItem('Фонды', CategoryTypes.Funds)
-    ),
-  },
-  {
-    id: longHash(),
-    type: CategoryTypes.Bonds,
-    title: 'Облигации',
-    items: Array.from({ length: 4 }, (_, index) =>
-      getItem('Облигации', CategoryTypes.Bonds)
-    ),
-  },
-  {
-    id: longHash(),
-    type: CategoryTypes.Money,
-    title: 'Валюты',
-    items: Array.from({ length: 4 }, (_, index) =>
-      getItem('Валюты', CategoryTypes.Money)
-    ),
-  },
-]
+import { arrayMove2d, findDroppable } from './helpers'
+import { CategoryTypes, ContainerTypes } from './Types'
+import { useMock } from './useMock'
+import DndKit from './DndKit'
 
 const getItemStyle = (isDragging, draggableStyle) => ({
   // some basic styles to make the items look a bit nicer
@@ -93,23 +20,6 @@ const getItemStyle = (isDragging, draggableStyle) => ({
   // styles we need to apply on draggables
   ...draggableStyle,
 })
-
-function arrayMove2d([source, destination], sourceIndex, destinationIndex) {
-  const newSource = Array.from(source)
-  const [removed] = newSource.splice(sourceIndex, 1)
-
-  if (source === destination) {
-    newSource.splice(destinationIndex, 0, removed)
-
-    return [newSource, newSource]
-  }
-
-  const newDestination = Array.from(destination)
-
-  newDestination.splice(destinationIndex, 0, removed)
-
-  return [newSource, newDestination, removed]
-}
 
 const DraggableItem = forwardRef(
   ({ content, draggableProps, dragHandleProps, isDragging }, ref) => {
@@ -129,23 +39,7 @@ const DraggableItem = forwardRef(
 )
 
 function App() {
-  const [items, setItems] = useState(initialItems)
-
-  function findDroppable(list, id) {
-    let droppable = null
-    let container = null
-
-    list.forEach((containerItem) => {
-      containerItem.items.forEach((droppableItem) => {
-        if (droppableItem.id === id) {
-          droppable = droppableItem
-          container = containerItem
-        }
-      })
-    })
-
-    return [droppable, container]
-  }
+  const [items, setItems] = useMock()
 
   const onDragEnd = (result) => {
     const { destination, source } = result
@@ -212,30 +106,18 @@ function App() {
           return draftState
         }
 
+        if (
+          containerSource.type === ContainerTypes.Available &&
+          droppableSource.type !== CategoryTypes.Trash
+        ) {
+          return draftState
+        }
+
         droppableSource.items = sourceItems
         droppableDestination.items = destinationItems
       })
     })
   }
-
-  useEffect(() => {
-    setTimeout(() => {
-      setItems((prevState) => {
-        return [
-          {
-            ...prevState[0],
-            items: getCategories(),
-          },
-          {
-            ...prevState[1],
-            items: getCategories().filter(
-              (category) => category.type !== CategoryTypes.Trash
-            ),
-          },
-        ]
-      })
-    }, 1500)
-  }, [])
 
   return (
     <div className="App">
@@ -314,6 +196,10 @@ function App() {
           ))}
         </div>
       </DragDropContext>
+
+      <div style={{ padding: '60px 0' }}>
+        <DndKit />
+      </div>
     </div>
   )
 }
